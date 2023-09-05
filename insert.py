@@ -1,5 +1,9 @@
 #!python3
 # -*- coding: utf-8 -*-
+# for linux: 
+# sudo apt-get install python3-fontforge
+# for venv: pyvenv.cfg -> include-system-site-packages = true
+
 import fontforge
 import psMat
 
