@@ -10,52 +10,26 @@ import psMat
 def scale(glyph, scalex, scaley):
     glyph.transform(psMat.scale(scalex, scaley))
 
-def adjust_glyph_scale(source_font, template_font, scaley, is_italic):
-    # for attr in ['ascent', 'descent',
-    #             'hhea_ascent', 'hhea_ascent_add',
-    #             'hhea_linegap',
-    #             'hhea_descent', 'hhea_descent_add',
-    #             'os2_winascent', 'os2_winascent_add',
-    #             'os2_windescent', 'os2_windescent_add',
-    #             'os2_typoascent', 'os2_typoascent_add',
-    #             'os2_typodescent', 'os2_typodescent_add',
-    #             ]:
-    #     setattr(source_font, attr, getattr(template_font, attr))    
-    for glyph in source_font.selection.byGlyphs:
-        _scaley = scaley
-        if not is_italic:
-            # custom fix for specific cases
-            # fontforge not copy some glyphs, instead combine them from existing symbols
-            # as example cyryllic Ы = b + I, real width = 550*2, but fontforge set it to 550*4
-            if chr(glyph.unicode) == 'й': 
-                glyph.right_side_bearing = 550
-                glyph.width = 550
-                continue
-            if chr(glyph.unicode) == 'Ы':
-                glyph.width = 1100
-                _scaley = 1
-
-        if (glyph.width - 550 > 10e-5):
+def adjust_glyph_scale(font):   
+    scaley = 1
+    for glyph in font.selection.byGlyphs:
+        if glyph.width > 550:
             scalex = 550/glyph.width
-            scale(glyph, scalex, _scaley)
+            scale(glyph, scalex, scaley)
             glyph.right_side_bearing = 550
             glyph.width = 550
 
 def generate_merged_font(font, name):
-    font.selection.all()
+    # font.selection.all()
     font.fontname += name
     font.fullname += name
     font.generate('output/' + font.fontname + '.otf')
 
-def merge(i_from, i_to, is_italic):
-    scaley = i_to.capHeight / i_from.capHeight
-    i_from.selection.select(("ranges", None), ord("А"), ord("я"))
-    i_from.copy()
-    i_to.selection.select(("ranges", None), ord("А"), ord("я"))
-    i_to.paste()
-    print(i_to.fontname)
-    adjust_glyph_scale(i_to, i_from, scaley, is_italic)
-    generate_merged_font(i_to, 'Merged')
+def merge(font):
+    font.selection.select(("ranges", None), ord("А"), ord("я"))
+    font.paste()
+    print(font.fontname)
+    generate_merged_font(font, 'Merged')
 
 _weightToStyleMap = {
     # fsSelection: Set bit 6 ("REGULAR").
@@ -79,7 +53,7 @@ _weightToStyleMap = {
 
 def generate_italic(path, subfamily, fullname, postscriptname, os2_weight):
     f = fontforge.open(path)
-    f.selection.all()
+    # f.selection.all()
     f.italicangle = -12
     f.italicize(italic_angle = -12)
 
@@ -102,20 +76,24 @@ def generate_italic(path, subfamily, fullname, postscriptname, os2_weight):
 
 macStyle = 0b11 # 0b01 - Bold; 0b10 - Italic
 
-comic = fontforge.open('input/comic_i.ttf')
+ms_sans = fontforge.open('input/from.otf')
+ms_sans.selection.select(("ranges", None), ord("А"), ord("я"))
+adjust_glyph_scale(ms_sans)
+ms_sans.copy()
+
 comic_nerd = fontforge.open('input/comic_nerd.otf')
-merge(comic, comic_nerd, 1)
+merge(comic_nerd)
 
 comic_i = fontforge.open('input/comic_i.ttf')
 comic_nerd_i = generate_italic('input/comic_nerd.otf', 'Italic', 'ComicShannsMono Nerd Font Italic', 'ComicShannsMonoNF-italic', 'italic')
-merge(comic_i, comic_nerd_i, 1)
+merge(comic_nerd_i)
 
 comic_b = fontforge.open('input/comicbi.ttf')
 comic_nerd_b = fontforge.open('input/comic_nerd_b.otf')
-merge(comic_b, comic_nerd_b, 1)
+merge(comic_nerd_b)
 
 comic_bi = fontforge.open('input/comicbi.ttf')
 comic_nerd_bi = generate_italic('input/comic_nerd_b.otf', 'Bold Italic', 'ComicShannsMono Nerd Font Bold Italic', 'ComicShannsMonoNF-BoldItalic', 'bolditalic')
-merge(comic_bi, comic_nerd_bi, 1)
+merge(comic_nerd_bi)
 
 
